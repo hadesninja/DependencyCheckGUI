@@ -1,6 +1,8 @@
 # files and folders created while running and debugging the program
 dependency-check/
 dependency-check.zip
+reports/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
