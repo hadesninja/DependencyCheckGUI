@@ -36,7 +36,7 @@ def browse_dependency_check_path():
         dep_check_entry.insert(0, dep_check_file)
 
 # Function to run the dependency-check command
-def run_command():
+def start_scan():
     ensure_folders()  # Ensure folders exist before running the command
 
     source_path = source_entry.get()
@@ -80,7 +80,7 @@ def run_command():
                     output_text.see(tk.END)
                 process.wait()
                 if process.returncode == 0:
-                    messagebox.showinfo("Success", f"Command executed successfully. Report saved to {output_file_path}")
+                    messagebox.showinfo("Success", f"Scan completed successfully. Report saved to {output_file_path}")
                 else:
                     error_message = process.stderr.read()
                     log_file.write(error_message)
@@ -169,7 +169,7 @@ api_key_entry.grid(row=3, column=1, padx=10, pady=5)
 tk.Label(root, text="Output Report Filename:").grid(row=4, column=0, padx=10, pady=5)
 output_filename = tk.Entry(root, width=50)
 output_filename.grid(row=4, column=1, padx=10, pady=5)
-run_button = tk.Button(root, text="Run Command", command=run_command)
+run_button = tk.Button(root, text="Run Command", command=start_scan)
 run_button.grid(row=5, column=0, columnspan=3, pady=10)
 
 output_text = ScrolledText(root, width=80, height=20)
