@@ -92,7 +92,7 @@ def run_command():
 
 # Function to show about information
 def show_about():
-    messagebox.showinfo("About Developer", "DependencyCheckGUI\n\nVersion 1.1\n\nDeveloper: Vaibhav Patil\n\nThis tool provides User Interface for Windows OS Users to download and run OWASP dependency-check command line tools and generate reports.\n\nIt is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.")
+    messagebox.showinfo("About Developer", "DependencyCheckGUI\n\nVersion 1.0\n\nDeveloper: Vaibhav Patil\n\nThis tool provides User Interface for Windows OS Users to download and run OWASP dependency-check command line tools and generate reports.\n\nIt is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.")
 
 # Function to download the latest version of Dependency Check
 def download_dependency_check():
