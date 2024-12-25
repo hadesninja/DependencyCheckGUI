@@ -3,6 +3,7 @@ dependency-check/
 dependency-check.zip
 reports/
 logs/
+*.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
