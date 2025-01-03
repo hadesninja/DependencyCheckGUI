@@ -17,99 +17,57 @@ def ensure_folders():
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-# Function to browse source files
-def browse_source_files():
-    source_files = filedialog.askopenfilenames(title="Select Source Files")
-    if source_files:
-        source_files_entry.delete(0, tk.END)
-        source_files_entry.insert(0, ";".join(source_files))
-
-# Function to browse source folder
-def browse_source_folder():
-    source_directory = filedialog.askdirectory(title="Select Source Directory")
+# Function to browse source path
+def browse_source_path():
+    source_directory = filedialog.askdirectory(title="Select folder to scan")
     if source_directory:
-        source_folder_entry.delete(0, tk.END)
-        source_folder_entry.insert(0, source_directory)
+        source_entry.delete(0, tk.END)
+        source_entry.insert(0, source_directory)
 
-# Function to browse dependency-check.bat path
-def browse_dependency_check_path():
-    current_directory = os.getcwd()
-    dep_check_file = filedialog.askopenfilename(
-        title="Select dependency-check.bat", 
-        filetypes=[("Batch files", "*.bat")],
-        initialdir=current_directory
+# Function to browse files to scan
+def browse_files():
+    file_types = [
+        ("Supported files", "*.jar *.js *.lock *.h *.nuspec *.csproj *.vbproj *.zip *.ear *.war *.sar *.apk *.nupkg *.exe *.dll"),
+        ("All files", "*.*")
+    ]
+    files = filedialog.askopenfilenames(
+        title="Select Files",
+        filetypes=file_types
     )
-    if dep_check_file:
-        dep_check_entry.delete(0, tk.END)
-        dep_check_entry.insert(0, dep_check_file)
+    if files:
+        files_entry.delete(0, tk.END)
+        files_entry.insert(0, ";".join(files))
 
-# Function to run the dependency-check command
-def start_scan():
-    ensure_folders()  # Ensure folders exist before running the command
+# Function to clean the dependency-check folder
+def clean_dependency_check_folder():
+    dep_check_folder = os.path.join(os.getcwd(), "dependency-check")
+    if os.path.exists(dep_check_folder):  # Proceed only if the folder exists
+        for item in os.listdir(dep_check_folder):
+            item_path = os.path.join(dep_check_folder, item)
+            if os.path.isdir(item_path) and item == "data":
+                continue  # Skip the data directory
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path)  # Remove folder
+            elif os.path.isfile(item_path):
+                os.remove(item_path)  # Remove file
 
-    source_files = source_files_entry.get().split(";")
-    source_folder = source_folder_entry.get()
-    project_name = project_entry.get()
-    api_key = api_key_entry.get()
-    output_filename_value = output_filename.get()
-    dep_check_path = dep_check_entry.get()
-
-    # Validate mandatory fields
-    if not source_files and not source_folder:
-        messagebox.showwarning("Invalid Source Path", "Please select a valid source path.")
-        return
-
+# Function to check Dependency Check version
+def check_version():
+    dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
     if not dep_check_path:
         messagebox.showwarning("Invalid Dependency Check Path", "Please select a valid dependency-check.bat file.")
         return
 
-    if not project_name:
-        messagebox.showwarning("Missing Report Title", "The Report Title field is mandatory.")
-        return
-
-    if not output_filename_value:
-        messagebox.showwarning("Missing Output Filename", "The Output Report Filename field is mandatory.")
-        return
-
-    # Prepare file paths
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file_path = os.path.join("reports", f"{output_filename_value}_{timestamp}.html")
-    log_file_path = os.path.join("logs", f"{output_filename_value}_{timestamp}.log")
-
-    # Prepare command
-    source_paths = source_files + ([source_folder] if source_folder else [])
-    source_paths_str = " ".join([f'"{path}"' for path in source_paths])
-    command = f'"{dep_check_path}" -s {source_paths_str} --project "{project_name}" --nvdApiKey "{api_key}" --out "{output_file_path}"'
-
-    def execute_command():
-        try:
-            with open(log_file_path, "w") as log_file:
-                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                for line in process.stdout:
-                    log_file.write(line)
-                    output_text.insert(tk.END, line)
-                    output_text.see(tk.END)
-                process.wait()
-                if process.returncode == 0:
-                    messagebox.showinfo("Success", f"Scan completed successfully. Report saved to {output_file_path}")
-                else:
-                    error_message = process.stderr.read()
-                    log_file.write(error_message)
-                    messagebox.showerror("Error", error_message)
-        except subprocess.CalledProcessError as e:
-            messagebox.showerror("Error", e.stderr.decode())
-        finally:
-            # Re-enable the run button after execution
-            run_button.config(state=tk.NORMAL)
-
-    # Disable the run button while the command is executing
-    run_button.config(state=tk.DISABLED)
-    threading.Thread(target=execute_command).start()
-
-
-# Function to show about information
-def show_about():
-    messagebox.showinfo("About Developer", "DependencyCheckGUI\n\nVersion 1.0\n\nDeveloper: Vaibhav Patil\n\nThis tool provides User Interface for Windows OS Users to download and run OWASP dependency-check command line tools and generate reports.\n\nIt is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.")
+    command = f'"{dep_check_path}" --version'
+    try:
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate()
+        if process.returncode == 0:
+            messagebox.showinfo("Dependency Check Version", stdout.strip())
+        else:
+            messagebox.showerror("Error", stderr.strip())
+    except subprocess.CalledProcessError as e:
+        messagebox.showerror("Error", e.stderr.decode())
 
 # Function to download the latest version of Dependency Check
 def download_dependency_check():
@@ -142,18 +100,14 @@ def download_dependency_check():
                     download_progress.set((downloaded_size / total_size) * 100)
                     download_popup.update_idletasks()
 
-            # Clean the dependency-check folder
-            clean_dependency_check_folder()
-
-            # Extract the downloaded ZIP file
+            # Extract the zip file
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(".")
-
-            # Set the dependency-check.bat path automatically
-            dep_check_bat_path = os.path.join(os.getcwd(), "dependency-check", "bin", "dependency-check.bat")
-            dep_check_entry.delete(0, tk.END)
-            dep_check_entry.insert(0, dep_check_bat_path)
-
+            
+            # Delete the zip file after extraction
+            if os.path.exists(zip_file_path):
+                os.remove(zip_file_path)
+            
             messagebox.showinfo("Download Complete", f"Downloaded and extracted Dependency Check to the current directory.")
             download_popup.destroy()
         except requests.RequestException as e:
@@ -161,25 +115,6 @@ def download_dependency_check():
             download_popup.destroy()
 
     threading.Thread(target=download_task).start()
-
-# Function to check Dependency Check version
-def check_version():
-    dep_check_path = dep_check_entry.get()
-    if not dep_check_path:
-        messagebox.showwarning("Invalid Dependency Check Path", "Please select a valid dependency-check.bat file.")
-        return
-
-    command = f'"{dep_check_path}" --version'
-    try:
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        stdout, stderr = process.communicate()
-        if process.returncode == 0:
-            messagebox.showinfo("Dependency Check Version", stdout.strip())
-        else:
-            messagebox.showerror("Error", stderr.strip())
-    except subprocess.CalledProcessError as e:
-        messagebox.showerror("Error", e.stderr.decode())
-
 
 # Function to open the version selection window
 def open_version_selection_window():
@@ -215,20 +150,7 @@ def open_version_selection_window():
     except requests.RequestException as e:
         messagebox.showerror("Error", f"Failed to fetch versions: {e}")
 
-# Function to clean the dependency-check folder
-def clean_dependency_check_folder():
-    dep_check_folder = os.path.join(os.getcwd(), "dependency-check")
-    if os.path.exists(dep_check_folder):  # Proceed only if the folder exists
-        for item in os.listdir(dep_check_folder):
-            item_path = os.path.join(dep_check_folder, item)
-            if os.path.isdir(item_path) and item == "data":
-                continue  # Skip the data directory
-            if os.path.isdir(item_path):
-                shutil.rmtree(item_path)  # Remove folder
-            elif os.path.isfile(item_path):
-                os.remove(item_path)  # Remove file
-
-# Function to download and extract a specific version (reuse logic from the previous implementation,clean the folder before extracting)
+# Function to download and extract a specific version (reuse logic from the previous implementation, clean the folder before extracting)
 def download_specific_version(version):
     download_popup = tk.Toplevel(root)
     download_popup.title(f"Downloading Dependency Check {version}")
@@ -263,10 +185,10 @@ def download_specific_version(version):
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(".")
             
-            # Set the dependency-check.bat path automatically for the specific version
-            dep_check_bat_path = os.path.join(os.getcwd(), "dependency-check", "bin", "dependency-check.bat")
-            dep_check_entry.delete(0, tk.END)
-            dep_check_entry.insert(0, dep_check_bat_path)
+
+            # Delete the zip file after extraction
+            if os.path.exists(zip_file_path):
+                os.remove(zip_file_path)
 
             messagebox.showinfo("Download Complete", f"Downloaded and extracted Dependency Check {version} to the current directory.")
             download_popup.destroy()
@@ -277,60 +199,146 @@ def download_specific_version(version):
     threading.Thread(target=download_task).start()
 
 
+
+# Function to run the dependency-check command
+def start_scan():
+    ensure_folders()  # Ensure folders exist before running the command
+
+    # Disable the Start Scan button
+    run_button.config(state=tk.DISABLED)
+
+    source_path = source_entry.get()
+    files = files_entry.get().split(";")
+    project_name = project_entry.get()
+    api_key = api_key_entry.get()
+    output_filename_value = output_filename.get()
+    dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
+
+    # Validate mandatory fields
+    if not source_path and not files:
+        messagebox.showwarning("Invalid Input", "Please select a valid source path or files to scan.")
+        run_button.config(state=tk.NORMAL)  # Re-enable the button
+        return
+
+    if not os.path.exists(dep_check_path):
+        response = messagebox.askyesno("Dependency Check Not Found", "dependency-check.bat not found. Do you want to download the latest version?")
+        if response:
+            download_dependency_check()
+        run_button.config(state=tk.NORMAL)  # Re-enable the button
+        return
+
+    if not project_name:
+        messagebox.showwarning("Missing Report Title", "The Report Title field is mandatory.")
+        run_button.config(state=tk.NORMAL)  # Re-enable the button
+        return
+
+    if not output_filename_value:
+        messagebox.showwarning("Missing Output Filename", "The Output Report Filename field is mandatory.")
+        run_button.config(state=tk.NORMAL)  # Re-enable the button
+        return
+
+
+    # Prepare file paths
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file_path = os.path.join("reports", f"{output_filename_value}_{timestamp}.html")
+    log_file_path = os.path.join("logs", f"{output_filename_value}_{timestamp}.log")
+
+    # Prepare command
+    command = f'"{dep_check_path}"'
+    # Add source_path argument if it's not empty
+    if source_path:
+        command += f' -s "{source_path}"'
+    # Add each file argument if files is not empty
+    for file in files:
+        if file:  # Ensure file is not empty
+            command += f' -s "{file}"'
+    # Add other required arguments
+    command += f' --project "{project_name}" --nvdApiKey "{api_key}" --out "{output_file_path}"'
+
+
+    def execute_command():
+        try:
+            with open(log_file_path, "w") as log_file:
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                for line in process.stdout:
+                    log_file.write(line)
+                    output_text.insert(tk.END, line)
+                    output_text.see(tk.END)
+                process.wait()
+                if process.returncode == 0:
+                    messagebox.showinfo("Success", f"Scan completed successfully. Report saved to {output_file_path}")
+                else:
+                    error_message = process.stderr.read()
+                    log_file.write(error_message)
+                    messagebox.showerror("Error", error_message)
+        except subprocess.CalledProcessError as e:
+            messagebox.showerror("Error", e.stderr.decode())
+        finally:
+            run_button.config(state=tk.NORMAL)  # Re-enable the button after execution
+
+    threading.Thread(target=execute_command).start()
+
+# Function to show about information
+def show_about():
+    messagebox.showinfo("About Developer", "DependencyCheckGUI\n\nVersion 1.1\n\nDeveloper: Vaibhav Patil"
+                        "\n\nThis tool provides User Interface for Windows OS Users to download and run OWASP dependency-check command line tools and generate reports."
+                        "\n\nIt is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.")
+
+# Function to exit the program
+def exit_program():
+    root.quit()
+
 # Create the main window
 root = tk.Tk()
-root.title("Dependency Check GUI")
+root.title("Dependency Check Runner")
 menu_bar = tk.Menu(root)
 root.config(menu=menu_bar)
 
+# File menu
 file_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="File", menu=file_menu)
-file_menu.add_command(label="Exit", command=root.quit)
+file_menu.add_command(label="Exit", command=exit_program)
 
+# Options menu
 options_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="Options", menu=options_menu)
-options_menu.add_command(label="Download Latest Dependency Check", command=download_dependency_check)
+options_menu.add_command(label="Update DependencyCheck Tools", command=download_dependency_check)
 # Updated options menu to include the new version selection window
 options_menu.add_command(label="Download Specific Version", command=open_version_selection_window)
 
+# About menu
+help_menu = tk.Menu(menu_bar, tearoff=0)
+menu_bar.add_cascade(label="Help", menu=help_menu)
+help_menu.add_command(label="Check Version of DC Tools", command=check_version)
+help_menu.add_command(label="About Us", command=show_about)
 
-about_menu = tk.Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Help", menu=about_menu)
-about_menu.add_command(label="About Us", command=show_about)
-about_menu.add_command(label="Check Version of DC Cli tools", command=check_version)
 
 # Create and place the labels and text boxes
-tk.Label(root, text="Dependency Check (.bat) Path:").grid(row=0, column=0, padx=10, pady=5)
-dep_check_entry = tk.Entry(root, width=50)
-dep_check_entry.grid(row=0, column=1, padx=10, pady=5)
-browse_dep_button = tk.Button(root, text="Select", command=browse_dependency_check_path)
-browse_dep_button.grid(row=0, column=2, padx=10, pady=5)
+tk.Label(root, text="Select folder to scan:").grid(row=0, column=0, padx=10, pady=5)
+source_entry = tk.Entry(root, width=50)
+source_entry.grid(row=0, column=1, padx=10, pady=5)
+browse_button = tk.Button(root, text="Select", command=browse_source_path)
+browse_button.grid(row=0, column=2, padx=10, pady=5)
 
-tk.Label(root, text="Select Files to Scan:").grid(row=1, column=0, padx=10, pady=5)
-source_files_entry = tk.Entry(root, width=50)
-source_files_entry.grid(row=1, column=1, padx=10, pady=5)
-browse_files_button = tk.Button(root, text="Select", command=browse_source_files)
+tk.Label(root, text="Select files to scan:").grid(row=1, column=0, padx=10, pady=5)
+files_entry = tk.Entry(root, width=50)
+files_entry.grid(row=1, column=1, padx=10, pady=5)
+browse_files_button = tk.Button(root, text="Select", command=browse_files)
 browse_files_button.grid(row=1, column=2, padx=10, pady=5)
 
-tk.Label(root, text="Select Folder to Scan:").grid(row=2, column=0, padx=10, pady=5)
-source_folder_entry = tk.Entry(root, width=50)
-source_folder_entry.grid(row=2, column=1, padx=10, pady=5)
-browse_folder_button = tk.Button(root, text="Select", command=browse_source_folder)
-browse_folder_button.grid(row=2, column=2, padx=10, pady=5)
-
-tk.Label(root, text="Enter Project Title:").grid(row=3, column=0, padx=10, pady=5)
+tk.Label(root, text="Project Report Title:").grid(row=2, column=0, padx=10, pady=5)
 project_entry = tk.Entry(root, width=50)
-project_entry.grid(row=3, column=1, padx=10, pady=5)
-tk.Label(root, text="Enter NVD API Key (Optional):").grid(row=4, column=0, padx=10, pady=5)
+project_entry.grid(row=2, column=1, padx=10, pady=5)
+tk.Label(root, text="NVD API Key (Optional):").grid(row=3, column=0, padx=10, pady=5)
 api_key_entry = tk.Entry(root, width=50)
-api_key_entry.grid(row=4, column=1, padx=10, pady=5)
-tk.Label(root, text="Enter Report File name:").grid(row=5, column=0, padx=10, pady=5)
+api_key_entry.grid(row=3, column=1, padx=10, pady=5)
+tk.Label(root, text="Output Report Filename:").grid(row=4, column=0, padx=10, pady=5)
 output_filename = tk.Entry(root, width=50)
-output_filename.grid(row=5, column=1, padx=10, pady=5)
-run_button = tk.Button(root, text="Run Command", command=start_scan)
-run_button.grid(row=6, column=0, columnspan=3, pady=10)
+output_filename.grid(row=4, column=1, padx=10, pady=5)
+run_button = tk.Button(root, text="Start Scan", command=start_scan)
+run_button.grid(row=5, column=0, columnspan=3, pady=10)
 
 output_text = ScrolledText(root, width=80, height=20)
-output_text.grid(row=7, column=0, columnspan=3, padx=10, pady=10)
+output_text.grid(row=6, column=0, columnspan=3, padx=10, pady=10)
 
 root.mainloop()
