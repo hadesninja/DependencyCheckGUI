@@ -99,6 +99,9 @@ def download_dependency_check():
                     downloaded_size += len(data)
                     download_progress.set((downloaded_size / total_size) * 100)
                     download_popup.update_idletasks()
+            
+                    # Clean the dependency-check folder, preserving the data directory
+                    clean_dependency_check_folder()
 
             # Extract the zip file
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
