@@ -53,10 +53,20 @@ def clean_dependency_check_folder():
 
 # Function to check Dependency Check version
 def check_version():
+    # Construct the path for dependency-check.bat
     dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
-    if not dep_check_path:
-        messagebox.showwarning("Invalid Dependency Check Path", "Please select a valid dependency-check.bat file.")
-        return
+    
+    # Check if the path exists
+    if not os.path.exists(dep_check_path):
+        # Show the message box with an option to download Dependency-Check
+        response = messagebox.askokcancel(
+            "Dependency Check Not Found", 
+            "The 'dependency-check.bat' file could not be found. You can download the latest version of Dependency-Check.\n\nClick OK to download."
+        )
+        
+        if response:  # If user clicked "OK"
+            download_dependency_check()  # Trigger the download
+        return  # Exit the function if the path is invalid
 
     command = f'"{dep_check_path}" --version'
     try:
@@ -68,6 +78,48 @@ def check_version():
             messagebox.showerror("Error", stderr.strip())
     except subprocess.CalledProcessError as e:
         messagebox.showerror("Error", e.stderr.decode())
+
+# Function to purge NVD data and check if Dependency Check exist if not download it 
+def purge_NVD_data():
+    # Construct the path for dependency-check.bat
+    dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
+    
+    # Check if the file exists
+    if not os.path.exists(dep_check_path):
+        # Show message box to inform the user about missing dependency-check.bat and offer to download
+        response = messagebox.askokcancel(
+            "Dependency Check Not Found", 
+            "The 'dependency-check.bat' file could not be found. You can download the latest version of Dependency-Check.\n\nClick OK to download."
+        )
+        
+        if response:  # If the user clicked "OK"
+            download_dependency_check()  # Trigger the download
+        return  # Exit the function if the path is invalid
+
+    # Construct the command to purge NVD data
+    command = f'"{dep_check_path}" --purge'
+    
+    try:
+        # Execute the purge command using subprocess
+        print("Purging NVD data...")
+        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+        
+        # If the output contains the specific message about missing the database, show a user-friendly message
+        if "Unable to purge database; the database file does not exist" in result.stderr:
+            messagebox.showinfo("No Data to Purge", "No NVD data found to purge.")
+        elif result.returncode == 0:
+            # If purge was successful
+            messagebox.showinfo("Purge Successful", "NVD data has been successfully purged.")
+        else:
+            # If the command fails for any other reason, show an error message
+            messagebox.showerror("Purge Failed", f"Failed to purge NVD data: {result.stderr}")
+    
+    except subprocess.CalledProcessError as e:
+        # Handle any error in executing the command
+        if "Unable to purge database; the database file does not exist" in e.stderr:
+            messagebox.showinfo("No Data to Purge", "No NVD data found to purge.")
+        else:
+            messagebox.showinfo("No Data to Purge", "No NVD data found to purge.")
 
 # Function to download the latest version of Dependency Check
 def download_dependency_check():
@@ -111,7 +163,7 @@ def download_dependency_check():
             if os.path.exists(zip_file_path):
                 os.remove(zip_file_path)
             
-            messagebox.showinfo("Download Complete", f"Downloaded and extracted Dependency Check to the current directory.")
+            messagebox.showinfo("Download Complete", f"Downloaded and extracted the latest version of Dependency Check to the current directory.")
             download_popup.destroy()
         except requests.RequestException as e:
             messagebox.showerror("Download Error", f"An error occurred while downloading: {e}")
@@ -181,8 +233,8 @@ def download_specific_version(version):
                     download_progress.set((downloaded_size / total_size) * 100)
                     download_popup.update_idletasks()
 
-            # Clean the dependency-check folder, preserving the data directory
-            clean_dependency_check_folder()
+                    # Clean the dependency-check folder, preserving the data directory
+                    clean_dependency_check_folder()
 
             # Extract the downloaded ZIP file
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
@@ -200,8 +252,6 @@ def download_specific_version(version):
             download_popup.destroy()
 
     threading.Thread(target=download_task).start()
-
-
 
 # Function to run the dependency-check command
 def start_scan():
@@ -284,7 +334,7 @@ def start_scan():
 # Function to show about information
 def show_about():
     messagebox.showinfo("About Developer", "DependencyCheckGUI\n\nVersion 1.1\n\nDeveloper: Vaibhav Patil"
-                        "\n\nThis tool provides User Interface for Windows OS Users to download and run OWASP dependency-check command line tools and generate reports."
+                        "\n\nThis tool provides User Interface for Windows Users to download and run OWASP dependency-check command line tools and generate reports."
                         "\n\nIt is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.")
 
 # Function to exit the program
@@ -305,16 +355,16 @@ file_menu.add_command(label="Exit", command=exit_program)
 # Options menu
 options_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="Options", menu=options_menu)
-options_menu.add_command(label="Update DependencyCheck Tools", command=download_dependency_check)
+options_menu.add_command(label="Update DC Tools to Latest Version", command=download_dependency_check)
 # Updated options menu to include the new version selection window
-options_menu.add_command(label="Download Specific Version", command=open_version_selection_window)
+options_menu.add_command(label="Download Other Version of DC Tools", command=open_version_selection_window)
+options_menu.add_command(label="Purge NVD Data", command=purge_NVD_data)
 
 # About menu
 help_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="Help", menu=help_menu)
 help_menu.add_command(label="Check Version of DC Tools", command=check_version)
 help_menu.add_command(label="About Us", command=show_about)
-
 
 # Create and place the labels and text boxes
 tk.Label(root, text="Select folder to scan:").grid(row=0, column=0, padx=10, pady=5)
