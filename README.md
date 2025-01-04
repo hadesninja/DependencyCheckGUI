@@ -1,15 +1,117 @@
 # DependencyCheckGUI
 
-This tool provides User Interface for Windows OS Users to download and run OWASP dependency-check command line tools and generate reports. It is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.
+**DependencyCheckGUI** is a graphical user interface (GUI) tool for running the OWASP Dependency Check command-line tools to scan and generate software dependency reports. The tool simplifies the interaction with Dependency-Check, which identifies known vulnerabilities in software libraries. This GUI is designed for Windows users but should work on other platforms with minor modifications.
 
 ## Features
-The provided code implements a GUI application to facilitate running the OWASP Dependency Check tool. Here's a breakdown of the key functionalities:
-Browse for Source Path: The browse_source_path function opens a directory selection dialog for the user to select the source directory. The selected path is then inserted into the source_entry text field.
 
-Download Latest Dependency Check: The download_dependency_check function downloads the latest version of the Dependency Check tool from GitHub, shows a progress bar during the download, and extracts the downloaded zip file to the current directory.
+#### 1. **Dependency Check Integration**
+   - Download and install the latest version of Dependency-Check.
+   - Purge NVD (National Vulnerability Database) data using Dependency-Check tools.
+   - Check the current version of Dependency-Check installed.
+   - Option to download specific versions of Dependency-Check from the official repository.
 
-Browse for Dependency Check Path: The browse_dependency_check_path function opens a file selection dialog for the user to select the dependency-check.bat file. The selected file path is then inserted into the dep_check_entry text field.
+#### 2. **Folder and File Selection**
+   - **Browse Folder**: Allows users to select a folder to scan for dependencies.
+   - **Browse Files**: Enables users to choose specific files (such as `.jar`, `.exe`, `.zip`, and others) for dependency scanning.
 
-Run Dependency Check Command: The start_scan function validates the user inputs, constructs the command to run the Dependency Check tool, and executes it in a separate thread. The output and errors are logged to a file and displayed in the ScrolledText widget.
+#### 3. **Customizable Reports**
+   - Users can define a project name, an optional NVD API key for NVD (National Vulnerability Database), and specify output filenames for reports.
+   - **Output Reports**: Generate HTML reports for the scanned dependencies.
 
-Ensure Required Folders Exist: The application ensures existence of "reports" and "logs" directories and creates them if they do not exist when click Scan.
+#### 4. **Scan Execution**
+   - **Start Scan**: After selecting the files or folders, users can initiate the Dependency-Check scan by clicking the "Start Scan" button.
+   - The scan runs in a background thread and outputs log details in a scrollable text field.
+
+#### 5. **NVD Data Purging**
+   - **Purge NVD Data**: Clears local NVD data, which may need to be refreshed occasionally to stay up-to-date with vulnerabilities.
+   
+#### 6. **Download Latest Dependency-Check**
+   - Automatically download and install the latest version of Dependency-Check, or select specific versions for download.
+   - A progress bar shows the download and extraction status.
+
+#### 7. **Menu Bar Options**
+   - **File**: Contains basic file operations such as "Exit".
+   - **Options**: Includes tools for updating Dependency-Check tools, downloading specific versions, and purging NVD data.
+   - **Help**: Provides information on the current version of Dependency-Check tools and about the application.
+
+## Usage
+
+#### **Running the Program**
+To run the program:
+
+**Using .exe File:**
+
+Download the .exe file from the release section.
+Simply double-click to run the application, and the GUI will open, ready to use.
+
+**Using the Python Script:**
+
+Clone or download the repository.
+Ensure Python 3.6+ and the required libraries are installed.
+Execute the script:
+
+`python DependencyCheckGUI.py`
+
+This will open the GUI window, allowing you to start scanning for vulnerabilities in your dependencies.
+
+
+
+
+## How It Works
+
+**Scanning:** The tool uses the dependency-check.bat script from OWASP Dependency-Check to perform the actual vulnerability scan. Users can input a folder or files to be scanned and configure the output report filename.
+
+**Download Process:** If Dependency-Check is not installed, users will be prompted to download it. The download and extraction process is shown via a progress bar.
+
+**Purge NVD Data:** The tool allows you to clear local NVD data to ensure you’re using up-to-date vulnerability information. If no data is available to purge, the tool will notify the user.
+
+## Requirements
+
+#### **For .exe Release Version**:
+If you are using the compiled `.exe` version of DependencyCheckGUI, you can skip the installation of Python dependencies. Simply download and run the `.exe` file, and you can start using the program immediately.
+
+#### **For Source Code (Python Version)**:
+If you are running the Python source code, ensure that Python 3.6+ and the following Python libraries are installed:
+
+**Python**: Ensure you have Python 3.6+ installed.
+
+**Python Libraries**:
+   - `tkinter` (for the GUI)
+   - `requests` (for downloading files)
+   - `subprocess` (for executing system commands)
+   - `shutil` and `os` (for file and directory manipulation)
+   - `zipfile` (for handling ZIP file extraction)
+   - `threading` (to handle background tasks)
+   
+You can install the necessary libraries using `pip`:
+
+`pip install requests`
+
+## Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-username/DependencyCheckGUI.git
+
+
+## Troubleshooting
+
+- **Dependency-Check Not Found:** If the tool can't find dependency-check.bat, it will prompt the user to download it.
+
+- **Permissions:** Ensure that the program has sufficient permissions to read/write files and folders, especially in the "reports" and "logs" directories.
+
+- **Network Issues:** If the tool can't download the latest version of Dependency-Check, ensure your network connection is stable and the server is reachable.
+
+- **Purging NVD Data:** If NVD data cannot be purged because it doesn't exist, the program will notify the user that there is no data to purge.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/hadesninja/DependencyCheckGUI?tab=MIT-1-ov-file#readme) file for details.
+
+## Acknowledgements
+
+- **OWASP Dependency-Check:** [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/)
+- **Tkinter:** Tkinter is used for creating the graphical user interface (GUI).
+- **Requests:** Used for downloading files.
+- **GitHub API:** Used to fetch available versions of 
+- **Dependency-Check** from the official repository.
+- **Python:** This tool is developed using Python for cross-platform compatibility.
