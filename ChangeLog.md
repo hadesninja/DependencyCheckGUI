@@ -1,23 +1,37 @@
 # Change Log
 
-## [Version 1.1]() - 2025-01-05
+## [Version 1.1](https://github.com/hadesninja/DependencyCheckGUI/releases/tag/v1.1) - 2025-01-05
 
 ### Added
-- **File Menu**: Contains basic file operations such as "Exit".
-- **Options Menu**: Includes tools for updating Dependency-Check tools, downloading specific versions, and purging NVD data.
-- **Help Menu**: Provides information on the current version of Dependency-Check tools and about the application.
+- Added a **File menu** with the following features:
+  - **Open Reports Folder**: Opens the "Reports" folder from the current directory in the file explorer.
+  - **Open Logs Folder**: Opens the "Logs" folder from the current directory in the file explorer.
+  - **Exit Program**: Allows the user to exit the program through the File menu.
+- Added an **Options Menu** with the following tools:
+  - **Update DC tools to Letest version**: Provides an option to download and update the Dependency-Check tools to latest version.
+  - **Download Specific Versions**: Allows the user to download specific versions of the Dependency-Check tools.
+  - **Purge NVD Data**: Provides a tool to purge the National Vulnerability Database (NVD) data.
+- Added a **Help Menu** with the following options:
+  - **Check Version of DC Tools**: Displays information about the current version of the Dependency-Check tools.
+  - **About the Application**: Provides general information about the application.
 - **Select Files Feature**: Enables users to choose specific files (such as .jar, .js, .exe, .zip, and others) for dependency scanning.
 - **Dependency Check Folder Cleanup**: Added logic to clean up old versions of Dependency-Check tools when a new or specific version is downloaded, while preserving NVD data.
 - **NVD API Key Information Popup**: Introduced a popup window that provides detailed information about the NVD API key wehn click on info button. The popup includes instructions on how to request an API key from the National Vulnerability Database (NVD).
 
 ### Changed
-- **Button Label Update**: Changed the button label from "Run Command" to "Start Scan".
+- **Button Label Update**: Changed the button label from **"Run Command"** to **"Start Scan"** for better clarity and alignment with functionality.
+- **Entry Labels Update**: Changed the labels of all entry fields to more appropriate and descriptive names to improve user experience and clarity.
 
 ### Fixed
 - **Button State Change**: Added feature to disable the button until the current scan finishes once clicked , preventing multiple clicks which causes errors.
 
 ### Removed
-- **Browse Dependency-Check.bat Feature**: Removed the need for users to select the `dependency-check.bat` file every time the application is run. It is now set by default.
+- Removed the **Output report filename entry** field.
+  - Now, the **project name** is used automatically to save both the report and log files, simplifying the file management process.
+- Removed the **Browse Dependency-Check.bat** field:
+  - Removed the need for users to select the `dependency-check.bat` file every time the application is run.
+  - Now path to the `dependency-check.bat` file is now set by default, streamlining the process.
+
 
 
 ## [Version 1.0](https://github.com/hadesninja/DependencyCheckGUI/releases/tag/v1.0) (Initial Release) - 2024-12-21
