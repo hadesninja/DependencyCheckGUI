@@ -39,6 +39,26 @@ def browse_files():
         files_entry.delete(0, tk.END)
         files_entry.insert(0, ";".join(files))
 
+
+# Funtion to open the reports and logs folder in the file explorer
+def open_folder(folder_name):
+    # Get the current working directory
+    current_directory = os.getcwd()
+    # Create the full path for the folder
+    folder_path = os.path.join(current_directory, folder_name)
+    
+    # Check if the folder exists
+    if os.path.exists(folder_path):
+        # Open the folder using the default file explorer
+        if os.name == 'nt':  # For Windows
+            subprocess.run(["explorer", folder_path])
+        elif os.name == 'posix':  # For macOS/Linux
+            subprocess.run(["open", folder_path])  # macOS
+            # subprocess.run(["xdg-open", folder_path])  # Linux
+    else:
+        # Folder doesn't exist
+        messagebox.showerror("Folder does not exist", f"Folder '{folder_name}' does not exist in the current directory.")
+
 # Function to clean the dependency-check folder
 def clean_dependency_check_folder():
     dep_check_folder = os.path.join(os.getcwd(), "dependency-check")
@@ -401,6 +421,8 @@ root.config(menu=menu_bar)
 # File menu
 file_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="File", menu=file_menu)
+file_menu.add_command(label="Open Reports", command=lambda: open_folder("Reports"))
+file_menu.add_command(label="Open Logs", command=lambda: open_folder("Logs"))
 file_menu.add_command(label="Exit", command=exit_program)
 
 # Options menu
