@@ -15,12 +15,13 @@
    - **Browse Files**: Enables users to choose specific files (such as `.jar`, `.exe`, `.zip`, and others) for dependency scanning.
 
 #### 3. **Customizable Reports**
-   - Users can define a project name, an optional NVD API key for NVD (National Vulnerability Database), and specify output filenames for reports.
-   - **Output Reports**: Generate HTML reports for the scanned dependencies.
+  - Users can define a **project name** for reports and log files.
+  - The **project name** is used automatically for naming the report and log files, improving the organization and management of generated files.
 
 #### 4. **Scan Execution**
    - **Start Scan**: After selecting the files or folders, users can initiate the Dependency-Check scan by clicking the "Start Scan" button.
    - The scan runs in a background thread and outputs log details in a scrollable text field.
+   - Users can also provide an optional **NVD API key** for enhanced integration with the National Vulnerability Database (NVD). An **Info button** is available next to the NVD API key entry field. When clicked, it provides useful information on how to obtain and use an NVD API key. 
 
 #### 5. **NVD Data Purging**
    - **Purge NVD Data**: Clears local NVD data, which may need to be refreshed occasionally to stay up-to-date with vulnerabilities.
@@ -30,9 +31,18 @@
    - A progress bar shows the download and extraction status.
 
 #### 7. **Menu Bar Options**
-   - **File**: Contains basic file operations such as "Exit".
+   - **File**: Contains basic file operations such as  "Open Reports folder","Open logs folder" and "Exit".
+     - **Open Reports Folder**: Opens the "Reports" folder located in the current working directory in the default file explorer.
+     - **Open Logs Folder**: Opens the "Logs" folder located in the current working directory in the default file explorer.
+     - **Exit**: Exits the application.
    - **Options**: Includes tools for updating Dependency-Check tools, downloading specific versions, and purging NVD data.
+     - **Update DC Tools to Latest Version**: Allows the user to update the Dependency-Check tools to the latest version.
+     - **Download Specific Versions**: Allows the user to download a specific version of the Dependency-Check tools.
+     - **Purge NVD Data**: Provides an option to purge the National Vulnerability Database (NVD) data, clearing stored vulnerability information.
    - **Help**: Provides information on the current version of Dependency-Check tools and about the application.
+     - **Check Version of DC Tools**: Displays information about the current version of the Dependency-Check tools being used.
+     - **About Us**: Provides general information about the application, including its purpose and features.
+
 
 ## Usage
 
