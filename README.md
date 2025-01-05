@@ -67,6 +67,14 @@ This will open the GUI window, allowing you to start scanning for vulnerabilitie
 
 ## Requirements
 
+#### Java Version
+
+Minimum Java Version: Java 11
+
+#### Internet Access
+
+DependencyCheckGUI requires access to several externally hosted resources wuch as Dependency Check command line tools and NVD data.
+
 #### **For .exe Release Version**:
 If you are using the compiled `.exe` version of DependencyCheckGUI, you can skip the installation of Python dependencies. Simply download and run the `.exe` file, and you can start using the program immediately.
 
