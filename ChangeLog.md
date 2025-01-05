@@ -8,6 +8,7 @@
 - **Help Menu**: Provides information on the current version of Dependency-Check tools and about the application.
 - **Select Files Feature**: Enables users to choose specific files (such as .jar, .js, .exe, .zip, and others) for dependency scanning.
 - **Dependency Check Folder Cleanup**: Added logic to clean up old versions of Dependency-Check tools when a new or specific version is downloaded, while preserving NVD data.
+- **NVD API Key Information Popup**: Introduced a popup window that provides detailed information about the NVD API key wehn click on info button. The popup includes instructions on how to request an API key from the National Vulnerability Database (NVD).
 
 ### Changed
 - **Button Label Update**: Changed the button label from "Run Command" to "Start Scan".
