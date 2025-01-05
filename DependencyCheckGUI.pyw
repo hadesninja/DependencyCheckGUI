@@ -8,6 +8,7 @@ import os
 import requests
 import zipfile
 import shutil
+import webbrowser
 from datetime import datetime
 
 # Ensure required folders exist
@@ -341,6 +342,56 @@ def show_about():
 def exit_program():
     root.quit()
 
+# Funtiona to show the API key information
+def show_api_info():
+    # Create a new window for the popup
+    popup = tk.Toplevel()
+    popup.title("NVD API Key Information")
+    
+    # Set the window size and minimum size
+    popup.geometry("400x250")
+    popup.minsize(400, 300)
+
+    # Configure the background color
+    popup.configure(bg="#f0f0f0")
+    
+    # Display the message with instructions
+    message = (
+        "NVD API key is a unique identifier that allows users to access and query "
+        "the National Vulnerability Database (NVD).\n\n"
+        "How to get an API key:\n"
+        "Users can request an API key at https://nvd.nist.gov/developers/request-an-api-key\n\n"
+        "Don't have an API key? Click OK to visit NVD website to request an API key "
+    )
+    
+    label = tk.Label(popup, text=message, wraplength=350, justify="left", padx=10, pady=10,
+                     bg="#f0f0f0", font=("Helvetica", 10), anchor="w")
+    label.pack(padx=20, pady=20)
+
+    # Function to handle the OK button click
+    def on_ok():
+        webbrowser.open("https://nvd.nist.gov/developers/request-an-api-key")
+        popup.destroy()  # Close the popup
+
+    # Function to handle the Cancel button click
+    def on_cancel():
+        popup.destroy()  # Close the popup
+
+    # Create OK and Cancel buttons with styling
+    button_frame = tk.Frame(popup, bg="#f0f0f0")
+    button_frame.pack(pady=10)
+
+    ok_button = tk.Button(button_frame, text="OK", command=on_ok, width=10, height=2,
+                          bg="#4CAF50", fg="white", font=("Helvetica", 10, "bold"), relief="raised")
+    ok_button.pack(side=tk.LEFT, padx=20)
+
+    cancel_button = tk.Button(button_frame, text="Cancel", command=on_cancel, width=10, height=2,
+                              bg="#F44336", fg="white", font=("Helvetica", 10, "bold"), relief="raised")
+    cancel_button.pack(side=tk.LEFT, padx=10)
+
+    # Run the popup
+    popup.mainloop()
+
 # Create the main window
 root = tk.Tk()
 root.title("Dependency Check Runner")
@@ -356,17 +407,15 @@ file_menu.add_command(label="Exit", command=exit_program)
 options_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="Options", menu=options_menu)
 options_menu.add_command(label="Update DC Tools to Latest Version", command=download_dependency_check)
-# Updated options menu to include the new version selection window
 options_menu.add_command(label="Download Other Version of DC Tools", command=open_version_selection_window)
 options_menu.add_command(label="Purge NVD Data", command=purge_NVD_data)
 
-# About menu
+# Help menu
 help_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="Help", menu=help_menu)
 help_menu.add_command(label="Check Version of DC Tools", command=check_version)
 help_menu.add_command(label="About Us", command=show_about)
 
-# Create and place the labels and text boxes
 tk.Label(root, text="Select folder to scan:").grid(row=0, column=0, padx=10, pady=5)
 source_entry = tk.Entry(root, width=50)
 source_entry.grid(row=0, column=1, padx=10, pady=5)
@@ -379,16 +428,20 @@ files_entry.grid(row=1, column=1, padx=10, pady=5)
 browse_files_button = tk.Button(root, text="Select", command=browse_files)
 browse_files_button.grid(row=1, column=2, padx=10, pady=5)
 
-tk.Label(root, text="Project Report Title:").grid(row=2, column=0, padx=10, pady=5)
-project_entry = tk.Entry(root, width=50)
-project_entry.grid(row=2, column=1, padx=10, pady=5)
-tk.Label(root, text="NVD API Key (Optional):").grid(row=3, column=0, padx=10, pady=5)
+tk.Label(root, text="Enter NVD API Key :").grid(row=2, column=0, padx=10, pady=5)
 api_key_entry = tk.Entry(root, width=50)
-api_key_entry.grid(row=3, column=1, padx=10, pady=5)
-tk.Label(root, text="Output Report Filename:").grid(row=4, column=0, padx=10, pady=5)
+api_key_entry.grid(row=2, column=1, padx=10, pady=5)
+browse_files_button = tk.Button(root, text="Info", command=show_api_info)
+browse_files_button.grid(row=2, column=2, padx=10, pady=5)
+
+tk.Label(root, text="Enter Report Title:").grid(row=3, column=0, padx=10, pady=5)
+project_entry = tk.Entry(root, width=50)
+project_entry.grid(row=3, column=1, padx=10, pady=5)
+
+tk.Label(root, text="Enter Report Filename:").grid(row=4, column=0, padx=10, pady=5)
 output_filename = tk.Entry(root, width=50)
 output_filename.grid(row=4, column=1, padx=10, pady=5)
-run_button = tk.Button(root, text="Start Scan", command=start_scan)
+run_button = tk.Button(root, text="Start Scan", command=start_scan,)
 run_button.grid(row=5, column=0, columnspan=3, pady=10)
 
 output_text = ScrolledText(root, width=80, height=20)
