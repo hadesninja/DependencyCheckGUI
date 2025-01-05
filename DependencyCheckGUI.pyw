@@ -283,9 +283,8 @@ def start_scan():
 
     source_path = source_entry.get()
     files = files_entry.get().split(";")
-    project_name = project_entry.get()
+    project_name = project_name_entry.get()
     api_key = api_key_entry.get()
-    output_filename_value = output_filename.get()
     dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
 
     # Validate mandatory fields
@@ -302,20 +301,14 @@ def start_scan():
         return
 
     if not project_name:
-        messagebox.showwarning("Missing Report Title", "The Report Title field is mandatory.")
+        messagebox.showwarning("Missing Project Name", "The Project Name field is mandatory.")
         run_button.config(state=tk.NORMAL)  # Re-enable the button
         return
-
-    if not output_filename_value:
-        messagebox.showwarning("Missing Output Filename", "The Output Report Filename field is mandatory.")
-        run_button.config(state=tk.NORMAL)  # Re-enable the button
-        return
-
 
     # Prepare file paths
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file_path = os.path.join("reports", f"{output_filename_value}_{timestamp}.html")
-    log_file_path = os.path.join("logs", f"{output_filename_value}_{timestamp}.log")
+    output_file_path = os.path.join("reports", f"{project_name}_{timestamp}.html")
+    log_file_path = os.path.join("logs", f"{project_name}_{timestamp}.log")
 
     # Prepare command
     command = f'"{dep_check_path}"'
@@ -370,7 +363,7 @@ def show_api_info():
     
     # Set the window size and minimum size
     popup.geometry("400x250")
-    popup.minsize(400, 300)
+    popup.minsize(400, 370)
 
     # Configure the background color
     popup.configure(bg="#f0f0f0")
@@ -378,7 +371,7 @@ def show_api_info():
     # Display the message with instructions
     message = (
         "NVD API key is a unique identifier that allows users to access and query "
-        "the National Vulnerability Database (NVD).\n\n"
+        "the National Vulnerability Database (NVD). Without an NVD API Key dependency-check's updates will be extremely slow. The NVD API has enforced rate limits. If you are using a single API KEY and multiple builds occur you could hit the rate limit and receive 403 errors.\n\n"
         "How to get an API key:\n"
         "Users can request an API key at https://nvd.nist.gov/developers/request-an-api-key\n\n"
         "Don't have an API key? Click OK to visit NVD website to request an API key "
@@ -456,13 +449,10 @@ api_key_entry.grid(row=2, column=1, padx=10, pady=5)
 browse_files_button = tk.Button(root, text="Info", command=show_api_info)
 browse_files_button.grid(row=2, column=2, padx=10, pady=5)
 
-tk.Label(root, text="Enter Report Title:").grid(row=3, column=0, padx=10, pady=5)
-project_entry = tk.Entry(root, width=50)
-project_entry.grid(row=3, column=1, padx=10, pady=5)
+tk.Label(root, text="Enter Project Name:").grid(row=3, column=0, padx=10, pady=5)
+project_name_entry = tk.Entry(root, width=50)
+project_name_entry.grid(row=3, column=1, padx=10, pady=5)
 
-tk.Label(root, text="Enter Report Filename:").grid(row=4, column=0, padx=10, pady=5)
-output_filename = tk.Entry(root, width=50)
-output_filename.grid(row=4, column=1, padx=10, pady=5)
 run_button = tk.Button(root, text="Start Scan", command=start_scan,)
 run_button.grid(row=5, column=0, columnspan=3, pady=10)
 
