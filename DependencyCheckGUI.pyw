@@ -329,7 +329,11 @@ def start_scan():
                 process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 for line in process.stdout:
                     log_file.write(line)
+                    output_text.configure(state='normal')
                     output_text.insert(tk.END, line)
+                    output_text.configure(state='disabled')
+                    # Autoscroll to the bottom
+                    output_text.yview(tk.END)
                     output_text.see(tk.END)
                 process.wait()
                 if process.returncode == 0:
