@@ -152,10 +152,10 @@ def download_dependency_check():
 
     def download_task():
         try:
-            version_response = requests.get("https://jeremylong.github.io/DependencyCheck/current.txt", timeout=10)
+            version_response = requests.get("https://dependency-check.github.io/DependencyCheck/current.txt", timeout=10)
             version_response.raise_for_status()
             version = version_response.text.strip()
-            download_url = f"https://github.com/jeremylong/DependencyCheck/releases/download/v{version}/dependency-check-{version}-release.zip"
+            download_url = f"https://github.com/dependency-check/DependencyCheck/releases/download/v{version}/dependency-check-{version}-release.zip"
             response = requests.get(download_url, stream=True)
             total_size = int(response.headers.get('content-length', 0))
 
@@ -195,7 +195,7 @@ def download_dependency_check():
 # Function to open the version selection window
 def open_version_selection_window():
     try:
-        response = requests.get("https://api.github.com/repos/jeremylong/DependencyCheck/releases", timeout=10)
+        response = requests.get("https://api.github.com/repos/dependency-check/DependencyCheck/releases", timeout=10)
         response.raise_for_status()
         releases = response.json()
         versions = [release["tag_name"].lstrip("v") for release in releases]
