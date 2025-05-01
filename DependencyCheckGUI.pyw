@@ -1,466 +1,656 @@
-import tkinter as tk
-from tkinter import messagebox, filedialog
-from tkinter.scrolledtext import ScrolledText
-from tkinter import ttk
+import os
+import re
+import shutil
 import subprocess
 import threading
-import os
+import datetime
 import requests
 import zipfile
-import shutil
-import webbrowser
-from datetime import datetime
+import xml.etree.ElementTree as ET
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5 import QtGui
+from PyQt5 import QtWidgets
+from fetch_cve_details import CVEDetailsRetriever
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QTextEdit, QMenuBar, QAction, QFileDialog
 
-# Ensure required folders exist
-def ensure_folders():
-    folders = ["reports", "logs"]
-    for folder in folders:
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-
-# Function to browse source path
-def browse_source_path():
-    source_directory = filedialog.askdirectory(title="Select folder to scan")
-    if source_directory:
-        source_entry.delete(0, tk.END)
-        source_entry.insert(0, source_directory)
-
-# Function to browse files to scan
-def browse_files():
-    file_types = [
-        ("Supported files", "*.jar *.js *.lock *.h *.nuspec *.csproj *.vbproj *.zip *.ear *.war *.sar *.apk *.nupkg *.exe *.dll"),
-        ("All files", "*.*")
-    ]
-    files = filedialog.askopenfilenames(
-        title="Select Files",
-        filetypes=file_types
-    )
-    if files:
-        files_entry.delete(0, tk.END)
-        files_entry.insert(0, ";".join(files))
+from jar_vulnerability_finder import JarVulnerabilityScanner
 
 
-# Funtion to open the reports and logs folder in the file explorer
-def open_folder(folder_name):
-    # Get the current working directory
-    current_directory = os.getcwd()
-    # Create the full path for the folder
-    folder_path = os.path.join(current_directory, folder_name)
-    
-    # Check if the folder exists
-    if os.path.exists(folder_path):
-        # Open the folder using the default file explorer
-        if os.name == 'nt':  # For Windows
-            subprocess.run(["explorer", folder_path])
-        elif os.name == 'posix':  # For macOS/Linux
-            subprocess.run(["open", folder_path])  # macOS
-            # subprocess.run(["xdg-open", folder_path])  # Linux
-    else:
-        # Folder doesn't exist
-        messagebox.showerror("Folder does not exist", f"Folder '{folder_name}' does not exist in the current directory.")
+class DependencyCheckGUI(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
 
-# Function to clean the dependency-check folder
-def clean_dependency_check_folder():
-    dep_check_folder = os.path.join(os.getcwd(), "dependency-check")
-    if os.path.exists(dep_check_folder):  # Proceed only if the folder exists
-        for item in os.listdir(dep_check_folder):
-            item_path = os.path.join(dep_check_folder, item)
-            if os.path.isdir(item_path) and item == "data":
-                continue  # Skip the data directory
-            if os.path.isdir(item_path):
-                shutil.rmtree(item_path)  # Remove folder
-            elif os.path.isfile(item_path):
-                os.remove(item_path)  # Remove file
+    def initUI(self):
+        self.setWindowTitle("Dependency Check GUI")
+        layout = QVBoxLayout()
 
-# Function to check Dependency Check version
-def check_version():
-    # Construct the path for dependency-check.bat
-    dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
-    
-    # Check if the path exists
-    if not os.path.exists(dep_check_path):
-        # Show the message box with an option to download Dependency-Check
-        response = messagebox.askokcancel(
-            "Dependency Check Not Found", 
-            "The 'dependency-check.bat' file could not be found. You can download the latest version of Dependency-Check.\n\nClick OK to download."
-        )
-        
-        if response:  # If user clicked "OK"
-            download_dependency_check()  # Trigger the download
-        return  # Exit the function if the path is invalid
+        # Menu Bar - File Menu
+        self.menu_bar = QMenuBar(self)
+        self.file_menu = self.menu_bar.addMenu("File")
 
-    command = f'"{dep_check_path}" --version'
-    try:
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        stdout, stderr = process.communicate()
-        if process.returncode == 0:
-            messagebox.showinfo("Dependency Check Version", stdout.strip())
-        else:
-            messagebox.showerror("Error", stderr.strip())
-    except subprocess.CalledProcessError as e:
-        messagebox.showerror("Error", e.stderr.decode())
+        # Open Folder Actions
+        open_dc_reports_action = QAction("Open DC Reports", self)
+        open_dc_reports_action.triggered.connect(self.open_dc_reports)
+        self.file_menu.addAction(open_dc_reports_action)
 
-# Function to purge NVD data and check if Dependency Check exist if not download it 
-def purge_NVD_data():
-    # Construct the path for dependency-check.bat
-    dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
-    
-    # Check if the file exists
-    if not os.path.exists(dep_check_path):
-        # Show message box to inform the user about missing dependency-check.bat and offer to download
-        response = messagebox.askokcancel(
-            "Dependency Check Not Found", 
-            "The 'dependency-check.bat' file could not be found. You can download the latest version of Dependency-Check.\n\nClick OK to download."
-        )
-        
-        if response:  # If the user clicked "OK"
-            download_dependency_check()  # Trigger the download
-        return  # Exit the function if the path is invalid
+        open_logs_action = QAction("Open Logs", self)
+        open_logs_action.triggered.connect(self.open_logs)
+        self.file_menu.addAction(open_logs_action)
 
-    # Construct the command to purge NVD data
-    command = f'"{dep_check_path}" --purge'
-    
-    try:
-        # Execute the purge command using subprocess
-        print("Purging NVD data...")
-        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
-        
-        # If the output contains the specific message about missing the database, show a user-friendly message
-        if "Unable to purge database; the database file does not exist" in result.stderr:
-            messagebox.showinfo("No Data to Purge", "No NVD data found to purge.")
-        elif result.returncode == 0:
-            # If purge was successful
-            messagebox.showinfo("Purge Successful", "NVD data has been successfully purged.")
-        else:
-            # If the command fails for any other reason, show an error message
-            messagebox.showerror("Purge Failed", f"Failed to purge NVD data: {result.stderr}")
-    
-    except subprocess.CalledProcessError as e:
-        # Handle any error in executing the command
-        if "Unable to purge database; the database file does not exist" in e.stderr:
-            messagebox.showinfo("No Data to Purge", "No NVD data found to purge.")
-        else:
-            messagebox.showinfo("No Data to Purge", "No NVD data found to purge.")
+        open_sca_jar_templates_action = QAction("Open SCA_Jar_Templates", self)
+        open_sca_jar_templates_action.triggered.connect(self.open_sca_jar_templates)
+        self.file_menu.addAction(open_sca_jar_templates_action)
 
-# Function to download the latest version of Dependency Check
-def download_dependency_check():
-    download_popup = tk.Toplevel(root)
-    download_popup.title("Downloading Dependency Check")
-    download_progress = tk.DoubleVar()
-    progress_bar = ttk.Progressbar(download_popup, variable=download_progress, maximum=100, length=300)
-    progress_bar.grid(row=0, column=0, padx=10, pady=10)
+        # Settings Menu (Preferences)
+        self.options_menu = self.file_menu.addMenu("Options")
+        self.set_api_key_action = QAction("Purge NVD data", self)
+        self.set_api_key_action.triggered.connect(self.purge_NVD_data)
+        self.options_menu.addAction(self.set_api_key_action)
 
-    def download_task():
-        try:
-            version_response = requests.get("https://dependency-check.github.io/DependencyCheck/current.txt", timeout=10)
-            version_response.raise_for_status()
-            version = version_response.text.strip()
-            download_url = f"https://github.com/dependency-check/DependencyCheck/releases/download/v{version}/dependency-check-{version}-release.zip"
-            response = requests.get(download_url, stream=True)
-            total_size = int(response.headers.get('content-length', 0))
+        # Settings Menu
+        self.preferences_menu = self.file_menu.addMenu("Preferences")
+        self.set_api_key_action = QAction("Set NVD API Key", self)
+        self.set_api_key_action.triggered.connect(self.set_nvd_api_key)
+        self.preferences_menu.addAction(self.set_api_key_action)
 
-            if total_size == 0:
-                messagebox.showerror("Download Error", "Failed to retrieve the file.")
-                download_popup.destroy()
-                return
+        exit_action = QAction("Exit", self)
+        exit_action.triggered.connect(QApplication.quit)
+        self.file_menu.addAction(exit_action)
 
-            zip_file_path = "dependency-check.zip"
-            with open(zip_file_path, "wb") as file:
-                downloaded_size = 0
-                for data in response.iter_content(chunk_size=1024):
-                    file.write(data)
-                    downloaded_size += len(data)
-                    download_progress.set((downloaded_size / total_size) * 100)
-                    download_popup.update_idletasks()
-            
-                    # Clean the dependency-check folder, preserving the data directory
-                    clean_dependency_check_folder()
+        # === TOOLS MENU ===
+        tools_menu = self.menu_bar.addMenu("Tools")
 
-            # Extract the zip file
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall(".")
-            
-            # Delete the zip file after extraction
-            if os.path.exists(zip_file_path):
-                os.remove(zip_file_path)
-            
-            messagebox.showinfo("Download Complete", f"Downloaded and extracted the latest version of Dependency Check to the current directory.")
-            download_popup.destroy()
-        except requests.RequestException as e:
-            messagebox.showerror("Download Error", f"An error occurred while downloading: {e}")
-            download_popup.destroy()
+        # Load Plugins action
+        load_plugins_action = QAction("CVE Details", self)
+        load_plugins_action.triggered.connect(self.fetch_cve_details)
+        tools_menu.addAction(load_plugins_action)
 
-    threading.Thread(target=download_task).start()
+        # Action for "Jar Vulnerability Finder"
+        load_plugins_action = QAction("Jar Vulnerability Finder", self)
+        load_plugins_action.triggered.connect(self.jar_vulnerability_finder)
+        tools_menu.addAction(load_plugins_action)
 
-# Function to open the version selection window
-def open_version_selection_window():
-    try:
-        response = requests.get("https://api.github.com/repos/dependency-check/DependencyCheck/releases", timeout=10)
-        response.raise_for_status()
-        releases = response.json()
-        versions = [release["tag_name"].lstrip("v") for release in releases]
+        # Menu Bar - Help Menu
+        self.help_menu = self.menu_bar.addMenu("Help")
+        self.download_dc_action = QAction("Update DC Tools", self)
+        self.download_dc_action.triggered.connect(self.download_dependency_check)
+        self.help_menu.addAction(self.download_dc_action)
 
-        if not versions:
-            messagebox.showinfo("No Versions Found", "No available versions were found.")
+        self.check_dc_version = QAction("Check DC Tools Version", self)
+        self.check_dc_version.triggered.connect(self.check_dctools_version)
+        self.help_menu.addAction(self.check_dc_version)
+
+        self.about_action = QAction("About", self)
+        self.about_action.triggered.connect(self.show_about_dialog)
+        self.help_menu.addAction(self.about_action)
+
+        layout.setMenuBar(self.menu_bar)
+
+        # Folder selection
+        folder_layout = QHBoxLayout()
+        self.folder_label = QLabel("Select folder to scan:")
+        folder_layout.addWidget(self.folder_label)
+        self.folder_entry = QLineEdit()
+        folder_layout.addWidget(self.folder_entry)
+        self.folder_button = QPushButton("Select")
+        self.folder_button.clicked.connect(self.browse_source_path)
+        folder_layout.addWidget(self.folder_button)
+        layout.addLayout(folder_layout)
+
+        # File selection
+        file_layout = QHBoxLayout()
+        self.file_label = QLabel("Select files to scan:")
+        file_layout.addWidget(self.file_label)
+        self.file_entry = QLineEdit()
+        file_layout.addWidget(self.file_entry)
+        self.file_button = QPushButton("Select")
+        self.file_button.clicked.connect(self.browse_files)
+        file_layout.addWidget(self.file_button)
+        layout.addLayout(file_layout)
+
+        # Project Name
+        project_layout = QHBoxLayout()
+        self.project_label = QLabel("Project Name:")
+        project_layout.addWidget(self.project_label)
+        self.project_entry = QLineEdit()
+        project_layout.addWidget(self.project_entry)
+        layout.addLayout(project_layout)
+
+        # Report format dropdown
+        format_layout = QHBoxLayout()
+        self.format_label = QLabel("Report Format:")
+        format_layout.addWidget(self.format_label)
+        self.format_dropdown = QComboBox()
+        self.format_dropdown.addItems(["HTML", "CSV", "XML"])
+        format_layout.addWidget(self.format_dropdown)
+        layout.addLayout(format_layout)
+
+        # Start the scan button
+        self.scan_button = QPushButton("Start Scan")
+        self.scan_button.clicked.connect(self.start_scan)
+        layout.addWidget(self.scan_button)
+
+        # Output text
+        self.output_text = QTextEdit()
+        self.output_text.setReadOnly(True)
+        layout.addWidget(self.output_text)
+
+        self.setLayout(layout)
+
+        # Connect the entry fields to handle clearing and enabling/disabling buttons
+        self.folder_entry.textChanged.connect(self.check_folder_entry)
+        self.file_entry.textChanged.connect(self.check_file_entry)
+
+        self.ensure_folders()
+
+    def browse_source_path(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder:
+            self.folder_entry.setText(folder)
+            self.file_button.setDisabled(True)  # Disable file selection button
+
+    def browse_files(self):
+        files, _ = QFileDialog.getOpenFileNames(self, "Select Files")
+        if files:
+            self.file_entry.setText(", ".join(files))
+            self.folder_button.setDisabled(True)  # Disable folder selection button
+
+    def check_folder_entry(self):
+        """Check if the folder entry is cleared and enable the file button if so"""
+        if not self.folder_entry.text().strip():  # If the folder entry is empty
+            self.file_button.setEnabled(True)  # Re-enable file selection button
+
+    def check_file_entry(self):
+        """Check if the file entry is cleared and enable the folder button if so"""
+        if not self.file_entry.text().strip():  # If the file entry is empty
+            self.folder_button.setEnabled(True)  # Re-enable folder selection button
+
+    # purse nvd data
+    def purge_NVD_data(self):
+        """
+        Function to purge NVD data using Dependency-Check.
+        If Dependency-Check is not found, prompt user to download it.
+        """
+        dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
+
+        # Check if dependency-check.bat exists
+        if not os.path.exists(dep_check_path):
+            response = QMessageBox.question(
+                self,
+                "Dependency Check Not Found",
+                "The 'dependency-check.bat' file could not be found.\n\nWould you like to download the latest version?",
+                QMessageBox.Ok | QMessageBox.Cancel,
+                QMessageBox.Ok
+            )
+
+            if response == QMessageBox.Ok:
+                self.download_dependency_check()  # You need to define this function separately
             return
 
-        # Create the new window
-        version_window = tk.Toplevel(root)
-        version_window.title("Select Dependency Check Version")
-        tk.Label(version_window, text="Select a version to download:").grid(row=0, column=0, padx=10, pady=10)
+        # Purge NVD data
+        command = f'"{dep_check_path}" --purge'
 
-        # Dropdown menu for versions
-        selected_version = tk.StringVar(value=versions[0])
-        version_dropdown = ttk.Combobox(version_window, textvariable=selected_version, values=versions, state="readonly")
-        version_dropdown.grid(row=0, column=1, padx=10, pady=10)
-
-        # Download button
-        def on_download():
-            version = selected_version.get()
-            version_window.destroy()
-            download_specific_version(version)
-
-        download_button = tk.Button(version_window, text="Download", command=on_download)
-        download_button.grid(row=1, column=0, columnspan=2, pady=10)
-
-    except requests.RequestException as e:
-        messagebox.showerror("Error", f"Failed to fetch versions: {e}")
-
-# Function to download and extract a specific version (reuse logic from the previous implementation, clean the folder before extracting)
-def download_specific_version(version):
-    download_popup = tk.Toplevel(root)
-    download_popup.title(f"Downloading Dependency Check {version}")
-    download_progress = tk.DoubleVar()
-    progress_bar = ttk.Progressbar(download_popup, variable=download_progress, maximum=100, length=300)
-    progress_bar.grid(row=0, column=0, padx=10, pady=10)
-
-    def download_task():
         try:
-            download_url = f"https://github.com/jeremylong/DependencyCheck/releases/download/v{version}/dependency-check-{version}-release.zip"
-            response = requests.get(download_url, stream=True)
-            total_size = int(response.headers.get('content-length', 0))
+            print("Purging NVD data...")
+            result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
 
-            if total_size == 0:
-                messagebox.showerror("Download Error", "Failed to retrieve the file.")
-                download_popup.destroy()
-                return
+            if "Unable to purge database; the database file does not exist" in result.stderr:
+                QMessageBox.information(self, "No Data to Purge", "No NVD data found to purge.")
+            elif result.returncode == 0:
+                QMessageBox.information(self, "Purge Successful", "NVD data has been successfully purged.")
+            else:
+                QMessageBox.critical(self, "Purge Failed", f"Failed to purge NVD data:\n{result.stderr}")
 
-            zip_file_path = f"dependency-check-{version}.zip"
-            with open(zip_file_path, "wb") as file:
-                downloaded_size = 0
-                for data in response.iter_content(chunk_size=1024):
-                    file.write(data)
-                    downloaded_size += len(data)
-                    download_progress.set((downloaded_size / total_size) * 100)
-                    download_popup.update_idletasks()
-
-                    # Clean the dependency-check folder, preserving the data directory
-                    clean_dependency_check_folder()
-
-            # Extract the downloaded ZIP file
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall(".")
-            
-
-            # Delete the zip file after extraction
-            if os.path.exists(zip_file_path):
-                os.remove(zip_file_path)
-
-            messagebox.showinfo("Download Complete", f"Downloaded and extracted Dependency Check {version} to the current directory.")
-            download_popup.destroy()
-        except requests.RequestException as e:
-            messagebox.showerror("Download Error", f"An error occurred while downloading: {e}")
-            download_popup.destroy()
-
-    threading.Thread(target=download_task).start()
-
-# Function to run the dependency-check command
-def start_scan():
-    ensure_folders()  # Ensure folders exist before running the command
-
-    # Disable the Start Scan button
-    run_button.config(state=tk.DISABLED)
-
-    source_path = source_entry.get()
-    files = files_entry.get().split(";")
-    project_name = project_name_entry.get()
-    api_key = api_key_entry.get()
-    dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
-
-    # Validate mandatory fields
-    if not source_path and not files:
-        messagebox.showwarning("Invalid Input", "Please select a valid source path or files to scan.")
-        run_button.config(state=tk.NORMAL)  # Re-enable the button
-        return
-
-    if not os.path.exists(dep_check_path):
-        response = messagebox.askyesno("Dependency Check Not Found", "dependency-check.bat not found. Do you want to download the latest version?")
-        if response:
-            download_dependency_check()
-        run_button.config(state=tk.NORMAL)  # Re-enable the button
-        return
-
-    if not project_name:
-        messagebox.showwarning("Missing Project Name", "The Project Name field is mandatory.")
-        run_button.config(state=tk.NORMAL)  # Re-enable the button
-        return
-
-    # Prepare file paths
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file_path = os.path.join("reports", f"{project_name}_{timestamp}.html")
-    log_file_path = os.path.join("logs", f"{project_name}_{timestamp}.log")
-
-    # Prepare command
-    command = f'"{dep_check_path}"'
-    # Add source_path argument if it's not empty
-    if source_path:
-        command += f' -s "{source_path}"'
-    # Add each file argument if files is not empty
-    for file in files:
-        if file:  # Ensure file is not empty
-            command += f' -s "{file}"'
-    # Add other required arguments
-    command += f' --project "{project_name}" --nvdApiKey "{api_key}" --out "{output_file_path}"'
-
-
-    def execute_command():
-        try:
-            with open(log_file_path, "w") as log_file:
-                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                for line in process.stdout:
-                    log_file.write(line)
-                    output_text.configure(state='normal')
-                    output_text.insert(tk.END, line)
-                    output_text.configure(state='disabled')
-                    # Autoscroll to the bottom
-                    output_text.yview(tk.END)
-                    output_text.see(tk.END)
-                process.wait()
-                if process.returncode == 0:
-                    messagebox.showinfo("Success", f"Scan completed successfully. Report saved to {output_file_path}")
-                else:
-                    error_message = process.stderr.read()
-                    log_file.write(error_message)
-                    messagebox.showerror("Error", error_message)
         except subprocess.CalledProcessError as e:
-            messagebox.showerror("Error", e.stderr.decode())
-        finally:
-            run_button.config(state=tk.NORMAL)  # Re-enable the button after execution
+            if "Unable to purge database; the database file does not exist" in e.stderr:
+                QMessageBox.information(self, "No Data to Purge", "No NVD data found to purge.")
+            else:
+                QMessageBox.information(self, "No Data to Purge", "No NVD data found to purge.")
 
-    threading.Thread(target=execute_command).start()
+    def jar_vulnerability_finder(self):
+        # Create and show the Jar Vulnerability Finder window
+        self.jar_vuln_window = JarVulnerabilityScanner()  # Instantiate the vulnerability finder
+        self.jar_vuln_window.show()
 
-# Function to show about information
-def show_about():
-    messagebox.showinfo("About Developer", "DependencyCheckGUI\n\nVersion 1.1\n\nDeveloper: Vaibhav Patil"
-                        "\n\nThis tool provides User Interface for Windows Users to download and run OWASP dependency-check command line tools and generate reports."
-                        "\n\nIt is an attempt to ease the use of OWASP Dependency Check command line tools with user friendly UI.")
 
-# Function to exit the program
-def exit_program():
-    root.quit()
+    def open_folder(self, folder_name):
+        """Open the folder in the system's default file explorer."""
+        folder_path = os.path.join(os.getcwd(), folder_name)
+        if os.path.exists(folder_path):
+            if os.name == 'nt':  # For Windows
+                subprocess.run(['explorer', folder_path])
+            elif os.name == 'posix':  # For Linux/MacOS
+                subprocess.run(['xdg-open', folder_path])
+        else:
+            QtWidgets.QMessageBox.warning(self, "Folder Not Found", f"{folder_name} folder does not exist.")
 
-# Funtiona to show the API key information
-def show_api_info():
-    # Create a new window for the popup
-    popup = tk.Toplevel()
-    popup.title("NVD API Key Information")
-    
-    # Set the window size and minimum size
-    popup.geometry("400x250")
-    popup.minsize(400, 370)
+    def open_dc_reports(self):
+        self.open_folder("Reports")
 
-    # Configure the background color
-    popup.configure(bg="#f0f0f0")
-    
-    # Display the message with instructions
-    message = (
-        "NVD API key is a unique identifier that allows users to access and query "
-        "the National Vulnerability Database (NVD). Without an NVD API Key dependency-check's updates will be extremely slow. The NVD API has enforced rate limits. If you are using a single API KEY and multiple builds occur you could hit the rate limit and receive 403 errors.\n\n"
-        "How to get an API key:\n"
-        "Users can request an API key at https://nvd.nist.gov/developers/request-an-api-key\n\n"
-        "Don't have an API key? Click OK to visit NVD website to request an API key "
-    )
-    
-    label = tk.Label(popup, text=message, wraplength=350, justify="left", padx=10, pady=10,
-                     bg="#f0f0f0", font=("Helvetica", 10), anchor="w")
-    label.pack(padx=20, pady=20)
+    def open_logs(self):
+        self.open_folder("Logs")
 
-    # Function to handle the OK button click
-    def on_ok():
-        webbrowser.open("https://nvd.nist.gov/developers/request-an-api-key")
-        popup.destroy()  # Close the popup
+    def open_sca_jar_templates(self):
+        self.open_folder("SCA_Jar_Templates")
 
-    # Function to handle the Cancel button click
-    def on_cancel():
-        popup.destroy()  # Close the popup
+    def show_about_dialog(self):
+        QtWidgets.QMessageBox.about(
+            self,
+            "About Dependency Check GUI",
+            (
+                "<h3>Dependency Check GUI</h3>"
+                "<p><b>Version:</b> 1. 2</p>"
+                "<p>A lightweight GUI interface for managing OWASP Dependency Check scans.</p>"
+                "<p>This tool provides a user-friendly interface for Windows users to download and run OWASP Dependency Check command-line tools and generate reports.</p>"
+                "<p>It simplifies the use of Dependency Check by abstracting the complexity of the command-line.</p>"
+                "<p><b>Developed by:</b> Vaibhav Patil</p>"
+            )
+        )
 
-    # Create OK and Cancel buttons with styling
-    button_frame = tk.Frame(popup, bg="#f0f0f0")
-    button_frame.pack(pady=10)
+    def fetch_cve_details(self):
+        self.cve_window = CVEDetailsRetriever()
+        self.cve_window.show()
 
-    ok_button = tk.Button(button_frame, text="OK", command=on_ok, width=10, height=2,
-                          bg="#4CAF50", fg="white", font=("Helvetica", 10, "bold"), relief="raised")
-    ok_button.pack(side=tk.LEFT, padx=20)
+    def check_dctools_version_startup(parent: QWidget):
+        dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
 
-    cancel_button = tk.Button(button_frame, text="Cancel", command=on_cancel, width=10, height=2,
-                              bg="#F44336", fg="white", font=("Helvetica", 10, "bold"), relief="raised")
-    cancel_button.pack(side=tk.LEFT, padx=10)
+        # If dependency-check.bat doesn't exist
+        if not os.path.exists(dep_check_path):
+            reply = QMessageBox.question(
+                parent,
+                "Dependency Check Not Found",
+                "The 'dependency-check.bat' file could not be found.\nYou can download the latest version of Dependency-Check.\n\nDo you want to download it?",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
 
-    # Run the popup
-    popup.mainloop()
+            if reply == QMessageBox.Ok:
+                parent.download_dependency_check()
+            return
 
-# Create the main window
-root = tk.Tk()
-root.title("Dependency Check Runner")
-menu_bar = tk.Menu(root)
-root.config(menu=menu_bar)
+        try:
+            # Get local version by running dependency-check.bat --version
+            result = subprocess.run([dep_check_path, "--version"], capture_output=True, text=True, shell=True)
+            local_version_output = result.stdout.strip()
 
-# File menu
-file_menu = tk.Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="File", menu=file_menu)
-file_menu.add_command(label="Open Reports", command=lambda: open_folder("Reports"))
-file_menu.add_command(label="Open Logs", command=lambda: open_folder("Logs"))
-file_menu.add_command(label="Exit", command=exit_program)
+            # Extract version number (assuming output like "Dependency-Check Core version 8.4.0")
+            match = re.search(r"version (\d+\.\d+\.\d+)", local_version_output)
+            if match:
+                local_version = match.group(1)
+            else:
+                local_version = None
 
-# Options menu
-options_menu = tk.Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Options", menu=options_menu)
-options_menu.add_command(label="Update DC Tools to Latest Version", command=download_dependency_check)
-options_menu.add_command(label="Download Other Version of DC Tools", command=open_version_selection_window)
-options_menu.add_command(label="Purge NVD Data", command=purge_NVD_data)
+            # Fetch latest version
+            version_url = "https://dependency-check.github.io/DependencyCheck/current.txt"
+            response = requests.get(version_url)
+            if response.status_code == 200:
+                latest_version = response.text.strip()
+            else:
+                latest_version = None
 
-# Help menu
-help_menu = tk.Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Help", menu=help_menu)
-help_menu.add_command(label="Check Version of DC Tools", command=check_version)
-help_menu.add_command(label="About Us", command=show_about)
+            # Compare versions
+            if local_version and latest_version:
+                if local_version != latest_version:
+                    reply = QMessageBox.question(
+                        parent,
+                        "Update Available",
+                        f"A newer version of Dependency-Check Tools is available.\n\nCurrent version: {local_version}\nLatest version: {latest_version}\n\nDo you want to download the latest version?",
+                        QMessageBox.Ok | QMessageBox.Cancel
+                    )
 
-tk.Label(root, text="Select folder to scan:").grid(row=0, column=0, padx=10, pady=5)
-source_entry = tk.Entry(root, width=50)
-source_entry.grid(row=0, column=1, padx=10, pady=5)
-browse_button = tk.Button(root, text="Select", command=browse_source_path)
-browse_button.grid(row=0, column=2, padx=10, pady=5)
+                    if reply == QMessageBox.Ok:
+                        parent.download_dependency_check()
+                else:
+                    # Optional: Inform user it's up to date
+                    pass
+            else:
+                parent.append_output("Could not determine local or latest Dependency-Check version.")
 
-tk.Label(root, text="Select files to scan:").grid(row=1, column=0, padx=10, pady=5)
-files_entry = tk.Entry(root, width=50)
-files_entry.grid(row=1, column=1, padx=10, pady=5)
-browse_files_button = tk.Button(root, text="Select", command=browse_files)
-browse_files_button.grid(row=1, column=2, padx=10, pady=5)
+        except Exception as e:
+            parent.append_output(f"Error checking Dependency-Check version: {str(e)}")
 
-tk.Label(root, text="Enter NVD API Key :").grid(row=2, column=0, padx=10, pady=5)
-api_key_entry = tk.Entry(root, width=50)
-api_key_entry.grid(row=2, column=1, padx=10, pady=5)
-browse_files_button = tk.Button(root, text="Info", command=show_api_info)
-browse_files_button.grid(row=2, column=2, padx=10, pady=5)
+    def check_dctools_version(parent: QWidget):
+        # Path to dependency-check.bat
+        dep_check_path = os.path.join("dependency-check", "bin", "dependency-check.bat")
 
-tk.Label(root, text="Enter Project Name:").grid(row=3, column=0, padx=10, pady=5)
-project_name_entry = tk.Entry(root, width=50)
-project_name_entry.grid(row=3, column=1, padx=10, pady=5)
+        # If dependency-check.bat doesn't exist
+        if not os.path.exists(dep_check_path):
+            reply = QMessageBox.question(
+                parent,
+                "Dependency Check Not Found",
+                "The 'dependency-check.bat' file could not be found.\nYou can download the latest version of Dependency-Check.\n\nDo you want to download it?",
+                QMessageBox.Ok | QMessageBox.Cancel
+            )
 
-run_button = tk.Button(root, text="Start Scan", command=start_scan,)
-run_button.grid(row=5, column=0, columnspan=3, pady=10)
+            if reply == QMessageBox.Ok:
+                parent.download_dependency_check()  # ✅ Call the method from the main window
+            return
 
-output_text = ScrolledText(root, width=80, height=20)
-output_text.grid(row=6, column=0, columnspan=3, padx=10, pady=10)
+        # Execute the version check
+        command = f'"{dep_check_path}" --version'
+        try:
+            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate()
+            if process.returncode == 0:
+                QMessageBox.information(parent, "Dependency Check Version", stdout.strip())
+            else:
+                QMessageBox.critical(parent, "Error", stderr.strip())
+        except subprocess.CalledProcessError as e:
+            QMessageBox.critical(parent, "Error", str(e))
 
-root.mainloop()
+
+    def ensure_folders(self):
+        for folder in ("Reports", "Logs", "SCA_Jar_Templates", "Backups", "dependency-check"):
+            os.makedirs(folder, exist_ok=True)
+
+    def browse_source_path(self):
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder to Scan")
+        if folder:
+            self.folder_entry.setText(folder)
+            self.file_entry.clear()  # Clear file entry when the folder is selected
+
+    def browse_files(self):
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Files to Scan", "",
+                                                          "Supported files (*.jar *.js *.lock *.h *.nuspec *.csproj *.vbproj *.zip *.ear *.war *.sar *.apk *.nupkg *.exe *.dll);;All files (*.*)")
+        if files:
+            self.file_entry.setText(",".join(files))  # Use comma instead of semicolon
+            self.folder_entry.clear()  # Clear folder entry when files are selected
+
+    def append_output(self, text):
+        self.output_text.append(text)
+
+    def clean_dependency_check_folder(self, extract_path):
+        if os.path.exists(extract_path):
+            for item in os.listdir(extract_path):
+                item_path = os.path.join(extract_path, item)
+                if item != "data":  # Preserve the 'data' folder
+                    if os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+                    else:
+                        os.remove(item_path)
+
+    def set_nvd_api_key(self):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Set NVD API Key")
+        dialog.resize(300, 100)  # <-- Added line to increase dialog size
+        layout = QtWidgets.QVBoxLayout(dialog)
+
+        label = QtWidgets.QLabel("Enter NVD API Key:")
+        layout.addWidget(label)
+
+        # Entry widget for API key
+        api_key_entry = QtWidgets.QLineEdit()
+        layout.addWidget(api_key_entry)
+
+        # Load the current API key if available
+        current_key = self.load_nvd_api_key()
+        if current_key:
+            api_key_entry.setText(current_key)
+
+        # Buttons layout
+        button_layout = QtWidgets.QHBoxLayout()
+        save_button = QtWidgets.QPushButton("Save")
+        cancel_button = QtWidgets.QPushButton("Cancel")
+
+        save_button.clicked.connect(lambda: self.save_nvd_api_key(api_key_entry.text(), dialog))
+        cancel_button.clicked.connect(dialog.reject)
+
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+        dialog.exec_()
+
+    def save_nvd_api_key(self, key, dialog):
+        if not key.strip():
+            QMessageBox.warning(self, "Invalid Input", "API key cannot be empty.")
+            return
+
+        # Create XML structure for saving
+        root = ET.Element("configuration")
+        api_key_element = ET.SubElement(root, "nvd_api_key")
+        api_key_element.text = key.strip()
+
+        # Get the directory of the current script
+        try:
+            program_dir = os.path.dirname(os.path.abspath(__file__))
+
+            # Paths for both the current directory and the _internal directory
+            config_paths = [
+                os.path.join(program_dir, "configuration.xml"),
+                os.path.join(program_dir, "_internal", "configuration.xml")
+            ]
+
+            tree = ET.ElementTree(root)
+
+            # Save the configuration in both locations
+            for config_path in config_paths:
+                try:
+                    # Ensure the directory exists for the _internal path
+                    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                    tree.write(config_path, encoding="utf-8", xml_declaration=True)
+
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to save configuration to {config_path}:\n{e}")
+                    return
+
+            QMessageBox.information(self, "Success", "NVD API Key saved in Configuration File.")
+            dialog.accept()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save configuration:\n{e}")
+
+    def load_nvd_api_key(self):
+        """Load the current NVD API Key from configuration files."""
+        program_dir = os.path.dirname(os.path.abspath(__file__))
+
+        config_paths = [
+            os.path.join(program_dir, "configuration.xml"),
+            os.path.join(program_dir, "_internal", "configuration.xml")
+        ]
+
+        for config_path in config_paths:
+            if os.path.exists(config_path):
+                try:
+                    tree = ET.parse(config_path)
+                    root = tree.getroot()
+                    api_key_element = root.find("nvd_api_key")
+                    if api_key_element is not None:
+                        return api_key_element.text
+                except Exception as e:
+                    QMessageBox.warning(self, "Warning", f"Error reading configuration file {config_path}:\n{e}")
+
+        return None
+
+    def download_dependency_check(self):
+        """Download and extract the latest Dependency Check version correctly with a progress bar."""
+        version_url = "https://dependency-check.github.io/DependencyCheck/current.txt"
+
+        try:
+            self.append_output("Fetching latest Dependency Check version...")
+            version_response = requests.get(version_url)
+            if version_response.status_code == 200:
+                version = version_response.text.strip()
+                download_url = f"https://github.com/dependency-check/DependencyCheck/releases/download/v{version}/dependency-check-{version}-release.zip"
+                save_path = "dependency-check.zip"
+                extract_temp = "dependency-check-temp"
+                extract_final = "dependency-check"
+
+                self.append_output("Cleaning up existing Dependency Check folder...")
+                self.clean_dependency_check_folder(extract_final)
+
+                self.append_output(f"Downloading Dependency Check {version}...")
+
+                # Create a progress bar
+                progress_dialog = QtWidgets.QProgressDialog("Downloading Dependency Check...", "Cancel", 0, 100, self)
+                progress_dialog.setWindowTitle("Downloading")
+                progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
+                progress_dialog.setMinimumDuration(0)
+                progress_dialog.setAutoClose(True)
+                progress_dialog.setAutoReset(True)
+
+                response = requests.get(download_url, stream=True)
+                if response.status_code == 200:
+                    total_size = int(response.headers.get("content-length", 1))
+                    downloaded_size = 0
+
+                    with open(save_path, "wb") as file:
+                        for chunk in response.iter_content(chunk_size=1024):
+                            if chunk:
+                                file.write(chunk)
+                                downloaded_size += len(chunk)
+
+                                # Update progress bar
+                                percent = int((downloaded_size / total_size) * 100)
+                                progress_dialog.setValue(percent)
+                                if progress_dialog.wasCanceled():
+                                    self.append_output("Download canceled.")
+                                    os.remove(save_path)
+                                    return
+
+                    self.append_output("Download complete. Extracting files...")
+                    with zipfile.ZipFile(save_path, "r") as zip_ref:
+                        zip_ref.extractall(extract_temp)
+                    os.remove(save_path)
+
+                    # Move extracted files correctly
+                    extracted_main_folder = os.path.join(extract_temp, "dependency-check")
+                    if os.path.exists(extracted_main_folder):
+                        for item in os.listdir(extracted_main_folder):
+                            shutil.move(os.path.join(extracted_main_folder, item), extract_final)
+                        shutil.rmtree(extract_temp)  # Clean up the temp folder
+
+                    self.append_output("Dependency Check is ready to use.")
+                else:
+                    self.append_output("Failed to download Dependency Check.")
+            else:
+                self.append_output("Failed to fetch the latest version.")
+        except Exception as e:
+            self.append_output(f"Error: {str(e)}")
+
+    def start_scan(self):
+        source_path = self.folder_entry.text().strip()
+        files = self.file_entry.text().strip().split(",")  # Split by semicolon
+        project_name = self.project_entry.text().strip()
+        report_format = self.format_dropdown.currentText().upper()
+        dep_check_path = os.path.abspath(os.path.join("dependency-check", "bin", "dependency-check.bat"))
+
+        if not project_name or (not source_path and not any(files)):
+            QtWidgets.QMessageBox.warning(self, "Invalid Input", "Please enter a valid project name and scan path.")
+            return
+
+        if not os.path.exists(dep_check_path):
+            reply = QtWidgets.QMessageBox.question(
+                self, "Error", "Dependency Check not found. Download now?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
+            if reply == QtWidgets.QMessageBox.Yes:
+                self.download_dependency_check()
+            return
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"{project_name}_{timestamp}.{report_format.lower()}"
+        output_file_path = os.path.abspath(os.path.join("Reports", report_filename))
+        log_file_path = os.path.abspath(os.path.join("Logs", f"{project_name}_{timestamp}.log"))
+
+        # Prepare scan paths
+        scan_paths = []
+        if source_path:
+            scan_paths.append(os.path.abspath(source_path))
+        if files:
+            scan_paths.extend(os.path.abspath(file) for file in files if file)
+
+        # Build the command
+        command = [dep_check_path, "--project", project_name]
+
+        for path in scan_paths:
+            command += ["--scan", path]
+
+        command += ["--out", output_file_path, "--format", report_format]
+
+        # Load API key if available
+        config_paths = [
+            os.path.abspath("configuration.xml"),
+            os.path.abspath(os.path.join("_internal", "configuration.xml"))
+        ]
+
+        api_key = None
+        for config_path in config_paths:
+            if os.path.exists(config_path):
+                try:
+                    tree = ET.parse(config_path)
+                    root = tree.getroot()
+                    api_key = root.findtext("nvd_api_key")
+                    break  # Exit the loop once we find the API key
+                except ET.ParseError:
+                    self.append_output(f"Error parsing {config_path}")
+
+        if not api_key:
+            self.set_nvd_api_key()
+            for config_path in config_paths:
+                if os.path.exists(config_path):
+                    try:
+                        tree = ET.parse(config_path)
+                        root = tree.getroot()
+                        api_key = root.findtext("nvd_api_key")
+                        break  # Exit the loop once we find the API key
+                    except ET.ParseError:
+                        self.append_output(f"Error parsing {config_path} after setting key")
+
+        if api_key:
+            command += ["--nvdApiKey", api_key]
+
+        def run_scan():
+            self.append_output(f"Running: {' '.join(command)}")
+            try:
+                with open(log_file_path, "w", encoding="utf-8") as log_file:
+                    log_file.write(f"Command: {' '.join(command)}\n\n")
+                    process = subprocess.Popen(
+                        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True
+                    )
+                    for line in iter(process.stdout.readline, ''):
+                        if line:
+                            cleaned_line = line.strip()
+                            QtCore.QMetaObject.invokeMethod(
+                                self.output_text, "append", QtCore.Qt.QueuedConnection,
+                                QtCore.Q_ARG(str, cleaned_line)
+                            )
+                            log_file.write(cleaned_line + "\n")
+                    process.wait()
+            except Exception as e:
+                error_msg = f"Error: {str(e)}"
+                QtCore.QMetaObject.invokeMethod(
+                    self.output_text, "append", QtCore.Qt.QueuedConnection,
+                    QtCore.Q_ARG(str, error_msg)
+                )
+                with open(log_file_path, "a", encoding="utf-8") as log_file:
+                    log_file.write(error_msg + "\n")
+            finally:
+                QtCore.QMetaObject.invokeMethod(
+                    self, "scan_finished", QtCore.Qt.QueuedConnection,
+                    QtCore.Q_ARG(str, output_file_path)
+                )
+
+        self.scan_button.setEnabled(False)
+        threading.Thread(target=run_scan, daemon=True).start()
+
+    @QtCore.pyqtSlot(str)
+    def scan_finished(self, output_file_path):
+        self.scan_button.setEnabled(True)
+        QtWidgets.QMessageBox.information(
+            self, "Scan Complete",
+            f"Scan completed successfully.\nReport saved at:\n{output_file_path}"
+        )
+
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication([])
+    gui = DependencyCheckGUI()
+    # Set the main window size (width, height)
+    gui.resize(800, 600)  # Example size, adjust as needed
+    # Set the window icon
+    app.setWindowIcon(QtGui.QIcon('assets/DC.ico'))
+    gui.show()
+    # Check Dependency Check version on startup
+    gui.check_dctools_version_startup()
+    app.exec_()
