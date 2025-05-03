@@ -3,6 +3,7 @@ dependency-check/
 dependency-check.zip
 reports/
 logs/
+SCA_Jar_Templates/
 *.zip
 
 # Byte-compiled / optimized / DLL files
