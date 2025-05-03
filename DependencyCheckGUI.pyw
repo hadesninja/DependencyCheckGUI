@@ -31,17 +31,13 @@ class DependencyCheckGUI(QtWidgets.QWidget):
         self.file_menu = self.menu_bar.addMenu("File")
 
         # Open Folder Actions
-        open_dc_reports_action = QAction("Open DC Reports", self)
+        open_dc_reports_action = QAction("Open Reports", self)
         open_dc_reports_action.triggered.connect(self.open_dc_reports)
         self.file_menu.addAction(open_dc_reports_action)
 
         open_logs_action = QAction("Open Logs", self)
         open_logs_action.triggered.connect(self.open_logs)
         self.file_menu.addAction(open_logs_action)
-
-        open_sca_jar_templates_action = QAction("Open SCA_Jar_Templates", self)
-        open_sca_jar_templates_action.triggered.connect(self.open_sca_jar_templates)
-        self.file_menu.addAction(open_sca_jar_templates_action)
 
         # Settings Menu (Preferences)
         self.options_menu = self.file_menu.addMenu("Options")
@@ -231,9 +227,6 @@ class DependencyCheckGUI(QtWidgets.QWidget):
 
     def open_logs(self):
         self.open_folder("Logs")
-
-    def open_sca_jar_templates(self):
-        self.open_folder("SCA_Jar_Templates")
 
     def show_about_dialog(self):
         QtWidgets.QMessageBox.about(
