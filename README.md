@@ -127,7 +127,7 @@ Licensed under the **MIT License**. See the [LICENSE](LICENSE) file.
 ---
 
 ## 🙌 Acknowledgements
-- [OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/)  
+ 
 - **PyQt5** – GUI Framework  
 - **Requests** – For downloads & API calls  
 - **GitHub API** – To fetch DC versions  
