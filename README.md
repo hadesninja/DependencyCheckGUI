@@ -131,7 +131,12 @@ Licensed under the **MIT License**. See the [LICENSE](LICENSE) file.
 - **PyQt5** – GUI Framework  
 - **Requests** – For downloads & API calls  
 - **GitHub API** – To fetch DC versions  
-- **Python** – Cross-platform base  
+- **Python** – Cross-platform base
+- **[OWASP Dependency-Check](https://owasp.org/www-project-dependency-check/)** – For scanning dependencies for known vulnerabilities.  
+- **[Solr Search API](https://solr.apache.org/)** – For indexing and searching project or CVE data.  
+- **[NVD API (National Vulnerability Database)](https://nvd.nist.gov/developers)** – To fetch detailed CVE information for dependencies.  
+
+We appreciate the work of these open-source communities for providing invaluable tools and data.
 
 ---
 
