@@ -65,8 +65,15 @@ The GUI now contains **three main menus**:
 ## 🚀 Usage
 
 ### ▶️ Run from Executable
-- Download from the **Releases** section.  
-- Double-click the `.exe` file to launch.  
+- 📦 **Windows Installer (Recommended):**  
+  Download the installer from the **Releases** section.  
+  Run the installer to set up the application. *(No administrator rights required).*  
+
+- ⚡ **Portable Executable:**  
+  - **Before v1.2:** A single `.exe` portable file was provided that could be run directly.  
+  - **Since v1.2:** The portable release is distributed as a `.zip` archive.  
+    Extract the archive and run the included `.exe` file to launch the application.
+     
 
 ### ▶️ Run from Source
 ```bash
