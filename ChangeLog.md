@@ -2,8 +2,6 @@
 
 ## [Version 1.2](https://github.com/hadesninja/DependencyCheckGUI/releases/tag/v1.2) - 2025-01-05
 
-## Version 1.2
-
 ### Added
 - **Preferences Menu** under File:
   - **Set NVD API Key**: Added a feature to configure or update the NVD API key.
