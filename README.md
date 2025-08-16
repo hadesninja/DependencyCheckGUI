@@ -94,7 +94,7 @@ If you are running the Python source code, ensure that Python 3.6+ and the follo
 **Python**: Ensure you have Python 3.6+ installed.
 
 **Python Libraries**:
-   - `tkinter` (for the GUI)
+   - `pyqt5` (for the GUI)
    - `requests` (for downloading files)
    - `subprocess` (for executing system commands)
    - `shutil` and `os` (for file and directory manipulation)
