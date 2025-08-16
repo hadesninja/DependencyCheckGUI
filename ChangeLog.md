@@ -1,5 +1,28 @@
 # Change Log
 
+## [Version 1.2](https://github.com/hadesninja/DependencyCheckGUI/releases/tag/v1.2) - 2025-01-05
+
+## Version 1.2
+
+### Added
+- **Preferences Menu** under File:
+  - **Set NVD API Key**: Added a feature to configure or update the NVD API key.
+- **Tools Menu Enhancements**:
+  - **CVE Details**: Users can now enter single or multiple CVE IDs (comma-separated) and fetch detailed information.
+  - **Jar Vulnerability Finder**: Added a feature to select a JAR file and fetch reported CVEs for it.
+
+### Changed
+- **UI Update**: Improved and optimized the user interface using PyQt5 for a smoother experience.
+- **Menu Structure Update**: Now only three main menus exist: **File**, **Tools**, and **Help**.
+- **Menu Relocations**:
+  - **Purge NVD Data** moved to **File → Options → Purge NVD Data**.
+  - **Update DC Tools** moved to the **Help** menu.
+
+### Fixed
+- General bug fixes and performance improvements for better stability.
+
+
+
 ## [Version 1.1](https://github.com/hadesninja/DependencyCheckGUI/releases/tag/v1.1) - 2025-01-05
 
 ### Added
@@ -8,7 +31,7 @@
   - **Open Logs Folder**: Opens the "Logs" folder from the current directory in the file explorer.
   - **Exit Program**: Allows the user to exit the program through the File menu.
 - Added an **Options Menu** with the following tools:
-  - **Update DC tools to Letest version**: Provides an option to download and update the Dependency-Check tools to latest version.
+  - **Update DC tools to the latest version**: Provides an option to download and update the Dependency-Check tools to latest version.
   - **Download Specific Versions**: Allows the user to download specific versions of the Dependency-Check tools.
   - **Purge NVD Data**: Provides a tool to purge the National Vulnerability Database (NVD) data.
 - Added a **Help Menu** with the following options:
