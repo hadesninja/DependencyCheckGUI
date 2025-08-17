@@ -1,4 +1,4 @@
-# 🔍 Dependency Check GUI
+# Dependency Check GUI
 
 **DependencyCheckGUI** is a graphical user interface (GUI) for running **OWASP Dependency-Check** command-line tools.  
 It simplifies vulnerability scanning of software dependencies with an easy-to-use interface, additional CVE tools, and report management features.  
